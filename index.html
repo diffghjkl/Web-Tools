@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>小工具站</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Microsoft YaHei", "Segoe UI", Tahoma, sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 16px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 20px 0 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e0e6ed;
+      background: #fff;
+    }
+    .header h1 {
+      font-size: 20px;
+      color: #2c3e50;
+      margin-bottom: 12px;
+    }
+    .search-box {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dcdfe6;
+      border-radius: 3px; /* IE9+ 圆角，IE8 自动降级 */
+      font-size: 14px;
+      outline: none;
+    }
+    .search-box input:focus {
+      border-color: #409eff;
+    }
+
+    .grid {
+      font-size: 0;
+      margin: 0 -8px;
+    }
+    .card {
+      display: inline-block;
+      width: 48%;
+      margin: 8px;
+      vertical-align: top;
+      background: #fff;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px;
+      padding: 14px;
+      font-size: 14px;
+      text-decoration: none;
+      color: inherit;
+      transition: none; /* 避免旧浏览器不支持 */
+    }
+    .card:hover {
+      border-color: #409eff;
+      box-shadow: 0 2px 8px rgba(64,158,255,0.12);
+    }
+    .card-icon {
+      float: left;
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      text-align: center;
+      background: #ecf5ff;
+      color: #409eff;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-right: 10px;
+      font-size: 16px;
+    }
+    .card-content {
+      overflow: hidden;
+    }
+    .card-title {
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-tag {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 2px 6px;
+      background: #f0f2f5;
+      border-radius: 2px;
+      font-size: 11px;
+      color: #666;
+    }
+
+    @media (max-width: 640px) {
+      .card { width: 96%; } /* 单列 */
+    }
+    @media (min-width: 1024px) {
+      .card { width: 31%; } /* 三列 */
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      color: #999;
+      font-size: 12px;
+      border-top: 1px solid #eee;
+      margin-top: 20px;
+    }
+
+    /* ===== 无 JS 时的降级提示 ===== */
+    .no-js {
+      display: none;
+      text-align: center;
+      color: #e6a23c;
+      padding: 8px;
+      background: #fdf6ec;
+      border: 1px solid #faecd8;
+      border-radius: 3px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛠️ 小工具站</h1>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="搜索工具名称或描述..." onkeyup="filterTools()">
+    </div>
+    <div class="no-js" id="noJsTip">💡 提示：启用 JavaScript 可使用搜索过滤功能</div>
+  </div>
+
+  <div class="grid" id="toolGrid">
+    <!-- 卡片 -->
+    <a class="card" href="./Browser" data-tags="浏览器 检测 内核 ua">
+      <div class="card-icon">🔍</div>
+      <div class="card-content">
+        <div class="card-title">浏览器检测</div>
+        <div class="card-desc">查看浏览器版本、渲染引擎、操作系统及设备类型</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- 页脚 -->
+  <div class="footer">
+    <p>© 2026 小工具站</p>
+  </div>
+
+  <script>
+    (function() {
+      // 显示/隐藏无 JS 提示
+      var noJs = document.getElementById('noJsTip');
+      if (noJs) noJs.style.display = 'none';
+
+      // 搜索过滤函数
+      window.filterTools = function() {
+        var input = document.getElementById('searchInput');
+        if (!input) return;
+        var keyword = input.value.toLowerCase().replace(/\s+/g, '');
+        var cards = document.getElementsByClassName('card');
+        
+        for (var i = 0; i < cards.length; i++) {
+          var card = cards[i];
+          var tags = (card.getAttribute('data-tags') || '').toLowerCase();
+          var title = card.getElementsByClassName('card-title')[0];
+          var desc = card.getElementsByClassName('card-desc')[0];
+          var text = (title ? title.textContent : '') + ' ' + 
+                     (desc ? desc.textContent : '') + ' ' + tags;
+          
+          if (keyword === '' || text.toLowerCase().indexOf(keyword) >= 0) {
+            card.style.display = '';
+          } else {
+            card.style.display = 'none';
+          }
+        }
+      };
+    })();
+  </script>
+</body>
+</html>
