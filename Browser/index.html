@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>浏览器检测</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Microsoft YaHei", "Segoe UI", Tahoma, sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ===== 居中卡片 - 兼容旧浏览器 ===== */
+    .wrapper {
+      min-height: 100%;
+      display: table;
+      width: 100%;
+      padding: 20px;
+    }
+    .center {
+      display: table-cell;
+      vertical-align: middle;
+      text-align: center;
+    }
+    .card {
+      display: inline-block;
+      width: 100%;
+      max-width: 480px;
+      background: #fff;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px; /* IE9+ 支持 */
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      text-align: left;
+      padding: 20px;
+    }
+
+    /* ===== 标题与内容 ===== */
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+      color: #2c3e50;
+    }
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .result-table th,
+    .result-table td {
+      padding: 8px 6px;
+      border-bottom: 1px dashed #eee;
+      text-align: left;
+    }
+    .result-table th {
+      width: 30%;
+      color: #666;
+      font-weight: normal;
+    }
+    .result-table td {
+      color: #222;
+      word-break: break-all;
+    }
+    .result-table tr:last-child th,
+    .result-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ===== UA 原文展示 ===== */
+    .ua-raw {
+      margin-top: 16px;
+      padding: 10px;
+      background: #f8f9fa;
+      border: 1px solid #eee;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      color: #555;
+      word-break: break-all;
+    }
+
+    /* ===== 状态提示 ===== */
+    .status {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+    .status.ok { color: #27ae60; }
+    .status.warn { color: #e67e22; }
+
+    /* ===== 低版本兼容补丁 ===== */
+    /* IE8- 不支持 border-radius，自动降级为直角 */
+    /* 不使用 CSS 变量、calc、flex、grid 等现代特性 */
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="center">
+      <div class="card">
+        <div class="title">🔍 浏览器检测</div>
+        <table class="result-table" id="resultTable">
+          <tbody>
+            <tr><th>浏览器</th><td id="browser">检测中...</td></tr>
+            <tr><th>浏览器版本</th><td id="version">-</td></tr>
+            <tr><th>渲染引擎</th><td id="engine">-</td></tr>
+            <tr><th>操作系统</th><td id="os">-</td></tr>
+            <tr><th>设备类型</th><td id="device">-</td></tr>
+          </tbody>
+        </table>
+        <div class="ua-raw" id="uaRaw"></div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var $ = function(id) { return document.getElementById(id); };
+      var ua = navigator.userAgent || '';
+      var platform = navigator.platform || '';
+      var result = {};
+      var method = '';
+
+      // ----- 1. 尝试现代 Client Hints (Chromium 109+) -----
+      if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
+        // IE/旧浏览器不会执行此处，安全降级
+        try {
+          // 注意：async/await 在 IE 不兼容，此处用 Promise 链式写法
+          navigator.userAgentData.getHighEntropyValues([
+            'platform', 'platformVersion', 'architecture', 'model', 'uaFullVersion'
+          ]).then(function(hints) {
+            var brands = navigator.userAgentData.brands || [];
+            var brand = '';
+            for (var i = 0; i < brands.length; i++) {
+              if (/Chrome|Edge|Firefox/.test(brands[i].brand)) {
+                brand = brands[i].brand;
+                break;
+              }
+            }
+            result.browser = brand || 'Chromium';
+            result.version = hints.uaFullVersion || '';
+            result.engine = /Chromium/.test(brands[0] ? brands[0].brand : '') ? 'Blink' : 'Unknown';
+            result.os = hints.platform || 'Unknown';
+            result.device = (hints.architecture === 'arm') ? 'ARM设备' : 
+                           (hints.model || (navigator.userAgentData.mobile ? 'Mobile' : 'PC'));
+            method = 'Client Hints';
+            render();
+          })['catch'](function() { fallbackParse(); });
+          return; // 异步分支，先返回
+        } catch (e) { /* 降级 */ }
+      }
+
+      // ----- 2. 传统 UA 正则解析 (兼容 IE9+) -----
+      function fallbackParse() {
+        // 操作系统
+        if (/Windows NT 10/.test(ua)) result.os = 'Windows 10/11';
+        else if (/Windows NT 6\.3/.test(ua)) result.os = 'Windows 8.1';
+        else if (/Windows NT 6\.2/.test(ua)) result.os = 'Windows 8';
+        else if (/Windows NT 6\.1/.test(ua)) result.os = 'Windows 7';
+        else if (/Mac OS X/.test(ua)) result.os = 'macOS';
+        else if (/Android/.test(ua)) { result.os = 'Android'; result.device = 'Mobile'; }
+        else if (/iPhone|iPad|iPod/.test(ua)) { result.os = 'iOS'; result.device = 'Mobile'; }
+        else if (/Linux/.test(ua)) result.os = 'Linux';
+        else result.os = 'Unknown';
+
+        // 浏览器 + 内核
+        if (/Edg\/|Edge\/|MSIE/.test(ua)) {
+          result.browser = 'Edge/IE';
+          result.engine = /Edg/.test(ua) ? 'Blink' : 'Trident/EdgeHTML';
+        } else if (/Chrome/.test(ua) && !/Edg|OPR|Vivaldi/.test(ua)) {
+          result.browser = 'Chrome';
+          result.engine = 'Blink';
+        } else if (/Firefox/.test(ua)) {
+          result.browser = 'Firefox';
+          result.engine = 'Gecko';
+        } else if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
+          result.browser = 'Safari';
+          result.engine = 'WebKit';
+        } else if (/OPR|Opera/.test(ua)) {
+          result.browser = 'Opera';
+          result.engine = 'Blink';
+        } else {
+          result.browser = 'Unknown';
+          result.engine = 'Unknown';
+        }
+
+        // 版本号提取
+        var verMatch = ua.match(/(?:Chrome|Edg|Firefox|Safari|Version|OPR|MSIE)[\/ ](\d+(?:\.\d+)?)/);
+        result.version = verMatch ? verMatch[1] : '';
+
+        // 设备类型
+        if (!result.device) {
+          result.device = /Mobi|Android|iPhone|iPad|iPod/.test(ua) ? 'Mobile' : 'PC';
+        }
+
+        method = 'UA 正则解析';
+        render();
+      }
+
+      // ----- 渲染结果到页面 -----
+      function render() {
+        $('browser').innerHTML = (result.browser || '-') + 
+          (result.version ? ' <strong>' + result.version + '</strong>' : '');
+        $('engine').textContent = result.engine || '-';
+        $('version').textContent = result.version || '-';
+        $('os').textContent = result.os || '-';
+        $('device').textContent = result.device || '-';
+        $('uaRaw').textContent = 'UA: ' + ua;
+        
+        var statusEl = $('status');
+        if (method === 'Client Hints') {
+          statusEl.className = 'status ok';
+          statusEl.textContent = '✅ 高精度模式 (Client Hints)';
+        } else {
+          statusEl.className = 'status warn';
+          statusEl.textContent = '⚡ 兼容模式 (UA 解析)';
+        }
+      }
+
+      // 启动检测
+      if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
+        // 已在上文处理异步分支
+      } else {
+        fallbackParse();
+      }
+    })();
+  </script>
+</body>
+</html>
